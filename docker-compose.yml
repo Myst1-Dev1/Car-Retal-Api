@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: car_db
+    restart: always
+    ports:
+      - '5432:5432'
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: pass
+      POSTGRES_DB: car_rental
+    volumes:
+      - db-data:/var/lib/postgresql/data
+
+  gateway:
+    build: ./gateway
+    ports:
+      - "4002:4001"
+    depends_on:
+      - auth-service
+      - user-service
+      - car-service
+      - rental-service
+
+  auth-service:
+    build: ./auth-service
+    ports:
+      - "4003:4001"
+    depends_on:
+      - postgres
+
+  user-service:
+    build: ./user-service
+    ports:
+      - "4004:4001"
+    depends_on:
+      - postgres
+
+  car-service:
+    build: ./car-service
+    ports:
+      - "4005:4001"
+    depends_on:
+      - postgres
+
+  rental-service:
+    build: ./rental-service
+    ports:
+      - "4006:4001"
+    depends_on:
+      - postgres
+
+volumes:
+  db-data:

@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16
+    container_name: car_db
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: myst1
+      POSTGRES_PASSWORD: coxinha123
+      POSTGRES_DB: car_rental
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    networks:
+      - car-network
+
+  redis:
+    image: redis:7
+    container_name: redis_auth
+    ports:
+      - "6379:6379"
+    networks:
+      - car-network
+
+  auth-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "4003:4001"
+    environment:
+      - DATABASE_URL=postgres://myst1:coxinha123@db:5432/car_rental
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - db
+      - redis
+    networks:
+      - car-network
+
+volumes:
+  db-data:
+
+networks:
+  car-network:
+    external: false

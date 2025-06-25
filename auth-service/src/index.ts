@@ -9,7 +9,7 @@ import errorHandler from "./middleware/errorHandler";
 import authRoutes from "./routes/auth.routes";
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 4001;
 
 app.use(helmet());
 app.use(cors());
@@ -21,10 +21,6 @@ app.use("/api/auth/register", sensitiveLimiter);
 app.use(errorHandler);
 
 app.use("/api/auth", authRoutes);
-
-app.get("/", (req, res) => {
-    res.send('Hello world');
-})
 
 app.listen(PORT, () => {
   logger.info(`Auth service running on port ${PORT}`);

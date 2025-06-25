@@ -8,14 +8,16 @@ services:
     ports:
       - '5432:5432'
     environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: pass
+      POSTGRES_USER: myst1
+      POSTGRES_PASSWORD: coxinha123
       POSTGRES_DB: car_rental
     volumes:
       - db-data:/var/lib/postgresql/data
 
   gateway:
-    build: ./gateway
+    build:
+      context: ./gateway
+      dockerfile: Dockerfile
     ports:
       - "4002:4001"
     depends_on:
@@ -25,28 +27,36 @@ services:
       - rental-service
 
   auth-service:
-    build: ./auth-service
+    build:
+      context: ./auth-service
+      dockerfile: Dockerfile
     ports:
       - "4003:4001"
     depends_on:
       - postgres
 
   user-service:
-    build: ./user-service
+    build:
+      context: ./user-service
+      dockerfile: Dockerfile
     ports:
       - "4004:4001"
     depends_on:
       - postgres
 
   car-service:
-    build: ./car-service
+    build:
+      context: ./car-service
+      dockerfile: Dockerfile
     ports:
       - "4005:4001"
     depends_on:
       - postgres
 
   rental-service:
-    build: ./rental-service
+    build:
+      context: ./rental-service
+      dockerfile: Dockerfile
     ports:
       - "4006:4001"
     depends_on:

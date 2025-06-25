@@ -1,66 +1,59 @@
-version: '3.8'
-
 services:
-  postgres:
+  car_db:
     image: postgres:16
     container_name: car_db
-    restart: always
     ports:
-      - '5432:5432'
+      - "5432:5432"
     environment:
       POSTGRES_USER: myst1
       POSTGRES_PASSWORD: coxinha123
       POSTGRES_DB: car_rental
     volumes:
       - db-data:/var/lib/postgresql/data
+    networks:
+      - car-network
 
-  gateway:
-    build:
-      context: ./gateway
-      dockerfile: Dockerfile
+  redis:
+    image: redis:7
+    container_name: redis_auth
     ports:
-      - "4002:4001"
-    depends_on:
-      - auth-service
-      - user-service
-      - car-service
-      - rental-service
+      - "6379:6379"
+    networks:
+      - car-network
 
   auth-service:
     build:
       context: ./auth-service
-      dockerfile: Dockerfile
+    container_name: auth-service
     ports:
       - "4003:4001"
     depends_on:
-      - postgres
+      - car_db
+      - redis
+    environment:
+      - DATABASE_URL=postgres://myst1:coxinha123@car_db:5432/car_rental
+      - REDIS_URL=redis://redis_auth:6379
+    networks:
+      - car-network
 
-  user-service:
+  api-gateway:
     build:
-      context: ./user-service
-      dockerfile: Dockerfile
+      context: ./api-gateway
+    container_name: api-gateway
     ports:
-      - "4004:4001"
+      - "4000:4000"
+    environment:
+      - REDIS_URL=redis://redis_auth:6379
+      - IDENTITY_SERVICE_URL=http://auth-service:4001
     depends_on:
-      - postgres
-
-  car-service:
-    build:
-      context: ./car-service
-      dockerfile: Dockerfile
-    ports:
-      - "4005:4001"
-    depends_on:
-      - postgres
-
-  rental-service:
-    build:
-      context: ./rental-service
-      dockerfile: Dockerfile
-    ports:
-      - "4006:4001"
-    depends_on:
-      - postgres
+      - auth-service
+      - redis
+    networks:
+      - car-network
 
 volumes:
   db-data:
+
+networks:
+  car-network:
+    driver: bridge

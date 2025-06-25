@@ -31,9 +31,22 @@ export const register = async(req:Request, res:Response) : Promise<any> => {
             });
         }
 
+        const existingUser = await db
+            .select()
+            .from(users)
+            .where(eq(users.email, email))
+            .limit(1);
+
+        if (existingUser.length > 0) {
+            logger.warn(`Email já registrado: ${email}`);
+            return res.status(409).json({
+                success: false,
+                message: "Este e-mail já está em uso",
+            });
+        }
+
         logger.info("Received register request", { email });
         
-        // Hash da senha
         const passwordHashed = await bcrypt.hash(passwordHash, 10);
         logger.info("Password hashed");
 
@@ -45,7 +58,7 @@ export const register = async(req:Request, res:Response) : Promise<any> => {
 
         res.status(201).json({ success: true, message: "User registered" });
 
-    } catch (error) {
+    } catch (error:any) {
         logger.error('Registration error ocurred', error);
         res.status(500).json({
             success: 'false',
@@ -71,7 +84,6 @@ export const login = async (req: Request, res: Response) : Promise<any> => {
 
     logger.info("Attempting login for:", email);
 
-    // Buscar o usuário
     const user = await db.select().from(users).where(eq(users.email, email)).limit(1);
     if (user.length === 0) {
       logger.warn("User not found:", email);
@@ -83,8 +95,7 @@ export const login = async (req: Request, res: Response) : Promise<any> => {
       logger.warn("Invalid password attempt for:", email);
       return res.status(401).json({ success: false, message: "Senha incorreta" });
     }
-
-    // Gerar token
+    
     const token = jwt.sign(
       { id: user[0].id, email: user[0].email },
       process.env.JWT_SECRET!,

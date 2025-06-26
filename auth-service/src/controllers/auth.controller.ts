@@ -6,66 +6,59 @@ import jwt from "jsonwebtoken";
 import { db } from '../db/db';
 import { users } from '../db/schema';
 import { validateLogin, validateRegistration } from '../utils/validation';
+import axios from 'axios';
 
-export const register = async(req:Request, res:Response) : Promise<any> => {
-    logger.info('Registration endpoint hit...');
-    
-    try {
-        
-        const { error } = validateRegistration(req.body);
-        if(error) {
-            logger.warn('Validation error', error.details[0].message);
-            return res.status(400).json({
-                success: false,
-                message: error.details[0].message
-            });
-        }
-
-        const { email, passwordHash } = req.body;
-
-        if (!email || !passwordHash) {
-            logger.warn("Preencha o email e a senha!");
-            return res.status(400).json({
-                success: false,
-                message: "Preencha o email e a senha!",
-            });
-        }
-
-        const existingUser = await db
-            .select()
-            .from(users)
-            .where(eq(users.email, email))
-            .limit(1);
-
-        if (existingUser.length > 0) {
-            logger.warn(`Email já registrado: ${email}`);
-            return res.status(409).json({
-                success: false,
-                message: "Este e-mail já está em uso",
-            });
-        }
-
-        logger.info("Received register request", { email });
-        
-        const passwordHashed = await bcrypt.hash(passwordHash, 10);
-        logger.info("Password hashed");
-
-        await db.insert(users).values({
-            email, passwordHash:passwordHashed
-        });
-
-        logger.info("User inserted into DB");
-
-        res.status(201).json({ success: true, message: "User registered" });
-
-    } catch (error:any) {
-        logger.error('Registration error ocurred', error);
-        res.status(500).json({
-            success: 'false',
-            message: 'Internal server error'
-        });
+export const register = async (req: Request, res: Response): Promise<any> => {
+  logger.info('Registration endpoint hit...');
+  
+  try {
+    const { error } = validateRegistration(req.body);
+    if (error) {
+      logger.warn('Validation error', error.details[0].message);
+      return res.status(400).json({
+        success: false,
+        message: error.details[0].message,
+      });
     }
-}
+
+    const { email, passwordHash } = req.body;
+
+    const existing = await db.select().from(users).where(eq(users.email, email));
+    if (existing.length > 0) {
+      logger.warn(`Email já registrado: ${email}`);
+      return res.status(409).json({
+        success: false,
+        message: "Este e-mail já está em uso",
+      });
+    }
+
+    const passwordHashed = await bcrypt.hash(passwordHash, 10);
+
+    const inserted = await db.insert(users).values({
+      email,
+      passwordHash: passwordHashed,
+    }).returning();
+
+    const userId = inserted[0].id;
+
+    logger.info("Usuário registrado com sucesso, criando perfil...");
+
+    await axios.post(`${process.env.USER_SERVICE_URL}/createProfile`, {
+      userId,
+      fullName: "Novo usuário",
+      avatarUrl: "https://greekherald.com.au/wp-content/uploads/2020/07/default-avatar.png"
+    });
+
+    res.status(201).json({ success: true, message: "Usuário registrado" });
+
+  } catch (error: any) {
+    logger.error('Registration error occurred', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
 
 export const login = async (req: Request, res: Response) : Promise<any> => {
   logger.info("Login endpoint hit...");

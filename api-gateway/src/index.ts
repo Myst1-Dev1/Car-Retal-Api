@@ -39,17 +39,30 @@ const proxyOptions = {
     }
 };
 
-app.use('/v1', proxy(process.env.IDENTITY_SERVICE_URL!, {
-    ...proxyOptions,
-    proxyReqOptDecorator: (proxyReqOpts:any, srcReq) => {
-        proxyReqOpts.headers["Content-Type"] = "application/json"
-        return proxyReqOpts
-    },
-    userResDecorator: (proxyRes, proxyResData, userReq, userRes) => {
-        logger.info(`Response received from Identity Service: ${proxyRes.statusCode}`);
+// Rota do auth-service
+app.use('/v1/auth', proxy(process.env.AUTH_SERVICE_URL!, {
+  ...proxyOptions,
+  proxyReqOptDecorator: (proxyReqOpts: any, srcReq) => {
+    proxyReqOpts.headers["Content-Type"] = "application/json";
+    return proxyReqOpts;
+  },
+  userResDecorator: (proxyRes, proxyResData, userReq, userRes) => {
+    logger.info(`Response from Auth Service: ${proxyRes.statusCode}`);
+    return proxyResData;
+  }
+}));
 
-        return proxyResData
-    }
+// Rota do user-service
+app.use('/v1/user', proxy(process.env.USER_SERVICE_URL!, {
+  ...proxyOptions,
+  proxyReqOptDecorator: (proxyReqOpts: any, srcReq) => {
+    proxyReqOpts.headers["Content-Type"] = "application/json";
+    return proxyReqOpts;
+  },
+  userResDecorator: (proxyRes, proxyResData, userReq, userRes) => {
+    logger.info(`Response from User Service: ${proxyRes.statusCode}`);
+    return proxyResData;
+  }
 }));
 
 app.get("/health", (_, res) => {
@@ -58,6 +71,6 @@ app.get("/health", (_, res) => {
 
 app.listen(PORT, () => {
     logger.info(`Api gateway is running on port ${PORT}`);
-    logger.info(`Identity service is running on port ${process.env.IDENTITY_SERVICE_URL}`);
+    // logger.info(`Identity service is running on port ${process.env.IDENTITY_SERVICE_URL}`);
     logger.info(`Redis url ${process.env.REDIS_URL}`);
 });

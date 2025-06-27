@@ -56,7 +56,7 @@ app.use('/v1/auth', proxy(process.env.AUTH_SERVICE_URL!, {
 app.use('/v1/user', proxy(process.env.USER_SERVICE_URL!, {
   ...proxyOptions,
   proxyReqOptDecorator: (proxyReqOpts: any, srcReq) => {
-    proxyReqOpts.headers["Content-Type"] = "application/json";
+    // proxyReqOpts.headers["Content-Type"] = "application/json";
     return proxyReqOpts;
   },
   userResDecorator: (proxyRes, proxyResData, userReq, userRes) => {

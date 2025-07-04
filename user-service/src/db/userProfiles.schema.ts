@@ -4,7 +4,8 @@ import {
   text,
   timestamp,
   integer,
-  boolean
+  boolean,
+  jsonb
 } from "drizzle-orm/pg-core";
 
 export const users = pgTable("users", {
@@ -21,6 +22,13 @@ export const userProfiles = pgTable("user_profiles", {
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
   fullName: text("full_name").notNull(),
+  phone: text("phone"),
+  address: text("address"),
+  rentalHistory: jsonb("rental_history"),
+  favorites: jsonb("favorites"),
+  userType: text("user_type"),
+  cpfCnpj: text("cpf_cnpj"),
+  birthDate: timestamp("birth_date"),
   avatarUrl: text("avatar_url"),
   createdAt: timestamp("created_at").defaultNow(),
 });

@@ -21,7 +21,15 @@ export const register = async (req: Request, res: Response): Promise<any> => {
       });
     }
 
-    const { email, passwordHash } = req.body;
+    const { email, passwordHash, phone, address, cpfCnpj, birthDate } = req.body;
+
+    if(!email || !passwordHash || !phone || !address || !cpfCnpj || !birthDate) {
+      logger.warn('Campos incompletos ou erro');
+      return res.status(400).json({
+        success: false,
+        message: 'Campos incompletos ou erro',
+      });
+    }
 
     const existing = await db.select().from(users).where(eq(users.email, email));
     if (existing.length > 0) {
@@ -46,6 +54,10 @@ export const register = async (req: Request, res: Response): Promise<any> => {
     await axios.post(`${process.env.USER_SERVICE_URL}/createProfile`, {
       userId,
       fullName: "Novo usuário",
+      phone,
+      address,
+      cpfCnpj,
+      birthDate,
       avatarUrl: "https://greekherald.com.au/wp-content/uploads/2020/07/default-avatar.png"
     });
 

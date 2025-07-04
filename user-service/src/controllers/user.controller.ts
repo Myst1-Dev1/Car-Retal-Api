@@ -4,6 +4,7 @@ import { db } from "../db/db";
 import { userProfiles, users } from "../db/userProfiles.schema";
 import { eq } from "drizzle-orm";
 import uploadToCloudinary from "../helpers/cloudinary-helper";
+import { validateProfile } from "../utils/validation";
 
 export const getAllProfiles = async(req: Request, res: Response): Promise<any> => {
   logger.info("getAllProfiles endpoint hit...");
@@ -57,17 +58,27 @@ export const createProfile = async(req: Request, res: Response): Promise<any> =>
     logger.info("createProfile endpoint hit...");
     
     try {
-        const { userId, fullName, avatarUrl } = req.body;
+        const { userId, fullName, phone, address, cpfCnpj, birthDate, avatarUrl } = req.body;
 
-        if (!userId || !fullName) {
+        if (!userId || !fullName || !phone || !address || !cpfCnpj || !birthDate) {
             return res.status(400).json({
                 success: false,
-                message: "Informe userId e fullName",
+                message: "Informe todos os campos",
+            });
+        }
+
+        const birthDateObj = new Date(birthDate);
+
+        if (isNaN(birthDateObj.getTime())) {
+            return res.status(400).json({
+                success: false,
+                message: "Data de nascimento inválida",
             });
         }
 
         const result = await db.insert(userProfiles).values({
-            userId, fullName, avatarUrl
+            userId, fullName, phone, address, cpfCnpj, birthDate: birthDateObj, rentalHistory:[], 
+            favorites:[], userType:'client', avatarUrl
         });
 
         res.status(201).json({ success: true, data: result });
@@ -87,17 +98,35 @@ export const updateProfile = async (req: Request | any, res: Response): Promise<
   logger.info("updateProfile endpoint hit...");
 
   try {
+    const { error } = validateProfile(req.body);
+    if (error) {
+      logger.warn('Validation error', error.details[0].message);
+      return res.status(400).json({
+        success: false,
+        message: error.details[0].message,
+      });
+    }
+
     const userId = req.user?.id;
-    const { fullName } = req.body;
+    const { fullName, phone, address, cpfCnpj, birthDate } = req.body;
     const avatar = req.file;
 
-    if (!userId || !fullName) {
+    if (!userId || !fullName || !phone || !address || !cpfCnpj || !birthDate) {
       logger.warn("Dados incompletos para atualização");
       return res.status(400).json({
         success: false,
         message: "Informe userId e fullName",
       });
     }
+
+    const birthDateObj = new Date(birthDate);
+
+      if (isNaN(birthDateObj.getTime())) {
+          return res.status(400).json({
+              success: false,
+              message: "Data de nascimento inválida",
+          });
+      }
 
     let avatarUrl = null;
     if (avatar) {
@@ -107,7 +136,7 @@ export const updateProfile = async (req: Request | any, res: Response): Promise<
 
     const updated = await db
       .update(userProfiles)
-      .set({ fullName, avatarUrl })
+      .set({ fullName, avatarUrl, phone, address, cpfCnpj, birthDate: birthDateObj })
       .where(eq(userProfiles.userId, userId))
       .returning();
 

@@ -1,0 +1,89 @@
+import { Response, Request } from "express";
+import { logger } from "../utils/logger";
+import { db } from "../db/db";
+import { cars } from "../db/schema";
+import { createCarSchema } from "../utils/validation";
+import fs from "fs/promises";
+import uploadToCloudinary from "../helpers/cloudinary-helper";
+
+export const getAllCars = async (req: Request, res: Response): Promise<any> => {
+  logger.info("getAllCars endpoint hit...");
+
+  try {
+    const results = await db.select().from(cars);
+
+    if (!results || results.length === 0) {
+      logger.warn("Nenhum carro encontrado");
+      return res.status(404).json({
+        success: false,
+        message: "Nenhum carro encontrado",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: results,
+    });
+  } catch (error) {
+    logger.error("Erro ao buscar carros:", error);
+    res.status(500).json({
+      success: false,
+      message: "Erro interno no servidor",
+    });
+  }
+};
+
+export const createCar = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { error, value } = createCarSchema.validate(req.body, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
+
+    if (error) {
+      return res.status(400).json({
+        success: false,
+        message: "Erro de validação",
+        errors: error.details.map((detail) => detail.message),
+      });
+    }
+
+    let imageUrl: string | undefined;
+    if ((req.files as any)?.image_url?.[0]) {
+      const file = (req.files as any).image_url[0];
+      const uploadResult = await uploadToCloudinary(file.path);
+      imageUrl = uploadResult.url;
+      await fs.unlink(file.path);
+    }
+
+    const thumbnails: string[] = [];
+    if ((req.files as any)?.thumbnail_urls) {
+      for (const file of (req.files as any).thumbnail_urls) {
+        const uploadResult = await uploadToCloudinary(file.path);
+        thumbnails.push(uploadResult.url);
+        await fs.unlink(file.path);
+      }
+    }
+
+    const result = await db
+      .insert(cars)
+      .values({
+        ...value,
+        image_url: imageUrl,
+        thumbnail_urls: thumbnails,
+      })
+      .returning();
+
+    return res.status(201).json({
+      success: true,
+      message: "Carro criado com sucesso",
+      data: result[0],
+    });
+  } catch (error) {
+    console.error("Erro ao criar carro:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Erro interno no servidor",
+    });
+  }
+};

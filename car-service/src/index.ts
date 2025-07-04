@@ -5,26 +5,22 @@ import helmet from "helmet";
 import { logger } from "./utils/logger";
 import { rateLimiterMiddleware, sensitiveLimiter } from "./middleware/rateLimiters";
 import errorHandler from "./middleware/errorHandler";
-import userRoutes from "./routes/user.routes";
+import carRoutes from "./routes/car.routes";
 
 const app = express();
-const PORT = process.env.PORT || 4002;
+const PORT = process.env.PORT || 4003;
 
 app.use(helmet());
 app.use(cors());
 app.use(express.json());
 
 app.use(rateLimiterMiddleware);
-app.use("/api/user", sensitiveLimiter);
+app.use("/api/car", sensitiveLimiter);
 
-app.use("/api/user", userRoutes);
-
-app.get("/", (req, res) => {
-  res.send('Hello world');
-});
+app.use("/api/car", carRoutes);
 
 app.use(errorHandler);
 
 app.listen(PORT, () => {
-  logger.info(`User service running on port ${PORT}`);
+  logger.info(`Car service running on port ${PORT}`);
 });

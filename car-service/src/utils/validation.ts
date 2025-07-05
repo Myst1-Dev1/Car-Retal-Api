@@ -32,4 +32,12 @@ export const createCarSchema = Joi.object({
   insurance_included: Joi.boolean().default(true),
   fuel_policy: Joi.string().required(),
   availability: Joi.boolean().default(true),
+
+  reviews: Joi.array().items(
+    Joi.object({
+      name: Joi.string().required(),
+      avatarUrl: Joi.string().uri().optional(),
+      comment: Joi.string().required(),
+    })
+  ).default([]),
 });

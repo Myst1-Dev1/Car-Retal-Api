@@ -72,17 +72,14 @@ export const cars = pgTable("cars", {
   fuel_policy: text("fuel_policy"), // ex: "Pago pelo cliente no momento da entrega"
 
   availability: boolean("availability").default(true),
+
+  reviews: jsonb("reviews").default([])
 });
 
 export const carReviews = pgTable("car_reviews", {
   id: serial("id").primaryKey(),
-  carId: integer("car_id")
-    .notNull()
-    .references(() => cars.id, { onDelete: "cascade" }),
-  userProfileId: integer("user_profile_id")
-    .notNull()
-    .references(() => userProfiles.id, { onDelete: "cascade" }),
-  rating: real("rating").notNull(),
+  evaluatorName: text("evaluator_name").notNull(),
+  evaluatorUrl: text("evaluator_url").default("https://greekherald.com.au/wp-content/uploads/2020/07/default-avatar.png"),
   comment: text("comment").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });

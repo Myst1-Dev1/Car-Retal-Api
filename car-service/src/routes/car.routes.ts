@@ -1,6 +1,6 @@
 import upload from '../middleware/uploadMiddleware';
 import { verifyToken } from '../middleware/authMiddleware';
-import { createCar, deleteCar, getAllCars, getCarById, updateCar } from '../controllers/car.controller';
+import { createCar, createCarReview, deleteCar, getAllCars, getCarById, updateCar } from '../controllers/car.controller';
 import express from 'express';
 
 const router = express.Router();
@@ -16,6 +16,7 @@ router.post(
   ]),
   createCar
 );
+router.post("/createCarReview/:id", verifyToken, createCarReview);
 router.put(
   "/updateCar/:id",
   verifyToken,

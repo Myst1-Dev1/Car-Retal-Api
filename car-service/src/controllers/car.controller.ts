@@ -1,7 +1,7 @@
 import { Response, Request } from "express";
 import { logger } from "../utils/logger";
 import { db } from "../db/db";
-import { cars } from "../db/schema";
+import { carReviews, cars } from "../db/schema";
 import { createCarSchema } from "../utils/validation";
 import fs from "fs/promises";
 import uploadToCloudinary from "../helpers/cloudinary-helper";
@@ -106,6 +106,7 @@ export const createCar = async (req: Request, res: Response): Promise<any> => {
         ...value,
         image_url: imageUrl,
         thumbnail_urls: thumbnails,
+        reviews: []
       })
       .returning();
 
@@ -117,6 +118,53 @@ export const createCar = async (req: Request, res: Response): Promise<any> => {
   } catch (error) {
     logger.error("Erro ao criar carro:", error);
     res.status(500).json({
+      success: false,
+      message: "Erro interno no servidor",
+    });
+  }
+};
+
+export const createCarReview = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { id } = req.params;
+    const { evaluatorName, evaluatorUrl, comment } = req.body;
+
+    const carId = Number(id);
+
+    const existingCar: any = (await db.select().from(cars).where(eq(cars.id, carId)))[0];
+    if (!existingCar) {
+      return res.status(404).json({
+        success: false,
+        message: "Carro não encontrado",
+      });
+    }
+
+    const newReview = {
+      name: evaluatorName,
+      avatarUrl: evaluatorUrl,
+      comment,
+    };
+
+    const updatedReviews = existingCar.reviews ? [...existingCar.reviews, newReview] : [newReview];
+
+    await db.update(cars)
+      .set({ reviews: updatedReviews })
+      .where(eq(cars.id, carId));
+
+    const reviewResult = await db.insert(carReviews).values({
+      evaluatorName,
+      evaluatorUrl,
+      comment,
+    }).returning();
+
+    return res.status(201).json({
+      success: true,
+      message: "Avaliação adicionada com sucesso",
+      data: reviewResult[0],
+    });
+  } catch (error) {
+    logger.error("Erro ao criar avaliação", error);
+    return res.status(500).json({
       success: false,
       message: "Erro interno no servidor",
     });

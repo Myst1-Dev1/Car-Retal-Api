@@ -38,43 +38,26 @@ export const cars = pgTable("cars", {
   id: serial("id").primaryKey(),
 
   name: text("name").notNull(),
-  car_model: text("car_model").notNull(),
   description: text("description"),
-
+  car_model: text("car_model").notNull(),
   image_url: text("image_url"),
   thumbnail_urls: text("thumbnail_urls").array(),
 
   year: integer("year"),
-  color: text("color"),
   passengers: integer("passengers"),
   fuel: text("fuel"),
+  fuel_capacity: real("fuel_capacity"),
   transmission: text("transmission"),
-  drive_type: text("drive_type"),
 
-  // Preços por período
   price_per_hour: real("price_per_hour"),
   price_per_day: real("price_per_day"),
   price_per_week: real("price_per_week"),
-
-  // Especificações técnicas
-  acceleration: text("acceleration"), // ex: "6 segundos (0-100 km/h)"
-  wheels: text("wheels"), // ex: "17\" de liga leve"
-  suspension: text("suspension"), // ex: "Independente"
-  brakes: text("brakes"), // ex: "Disco ventilado nas 4 rodas"
-  oil_consumption: text("oil_consumption"), // ex: "0.2L a cada 1000 km"
-  air_conditioning: text("air_conditioning"), // ex: "Ar condicionado automático"
-  power_steering: boolean("power_steering"), // ex: true
-  sound_system: text("sound_system"), // ex: "Bluetooth / Rádio FM"
-  rear_camera: text("rear_camera"), // ex: "Sim, com sensores de estacionamento"
-
-  // Observações adicionais
-  insurance_included: boolean("insurance_included").default(true),
-  fuel_policy: text("fuel_policy"), // ex: "Pago pelo cliente no momento da entrega"
 
   availability: boolean("availability").default(true),
 
   reviews: jsonb("reviews").default([])
 });
+
 
 export const carReviews = pgTable("car_reviews", {
   id: serial("id").primaryKey(),

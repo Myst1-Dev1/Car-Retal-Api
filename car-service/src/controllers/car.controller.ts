@@ -1,11 +1,11 @@
 import { Response, Request } from "express";
 import { logger } from "../utils/logger";
 import { db } from "../db/db";
-import { carReviews, cars } from "../db/schema";
+import { carReviews, cars, favoriteCars, userProfiles } from "../db/schema";
 import { createCarSchema } from "../utils/validation";
 import fs from "fs/promises";
 import uploadToCloudinary from "../helpers/cloudinary-helper";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 
 export const getAllCars = async (req: Request, res: Response): Promise<any> => {
   logger.info("getAllCars endpoint hit...");
@@ -61,6 +61,46 @@ export const getCarById = async (req: Request, res: Response): Promise<any> => {
     res.status(500).json({
       success: false,
       message: "Erro interno no servidor",
+    });
+  }
+};
+
+export const getFavoriteCarsByUser = async (req: Request, res: Response): Promise<any> => {
+  try {
+
+    const userProfileId = Number(req.params.id);
+
+    if (isNaN(userProfileId)) {
+      return res.status(400).json({
+        success: false,
+        message: "ID inválido",
+      });
+    }
+
+    const favorites = await db
+      .select({
+        id: cars.id,
+        name: cars.name,
+        car_model: cars.car_model,
+        image_url: cars.image_url,
+        year: cars.year,
+        price_per_day: cars.price_per_day,
+        availability: cars.availability,
+      })
+      .from(favoriteCars)
+      .innerJoin(cars, eq(favoriteCars.carId, cars.id))
+      .where(eq(favoriteCars.userProfileId, userProfileId));
+
+
+    res.status(200).json({
+      success: true,
+      data: favorites
+    });
+  } catch (error) {
+    console.error("Erro ao buscar favoritos:", error);
+    res.status(500).json({
+      success: false,
+      message: "Erro interno ao buscar favoritos",
     });
   }
 };
@@ -266,3 +306,123 @@ export const deleteCar = async(req: Request, res: Response): Promise<any> => {
     });
   }
 }
+
+export const favoriteCar = async (req: Request, res: Response): Promise<any> => {
+  logger.info("favoriteCar endpoint hit...");
+
+  try {
+    const { carId, userProfileId } = req.body;
+
+    if (!carId || !userProfileId) {
+      return res.status(400).json({
+        success: false,
+        message: "carId e userProfileId são obrigatórios",
+      });
+    }
+
+    // Verifica se o carro existe
+    const carExists = await db.select().from(cars).where(eq(cars.id, carId)).limit(1);
+    if (carExists.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Carro não encontrado",
+      });
+    }
+
+    // Verifica se o perfil de usuário existe
+    const userExists = await db
+      .select()
+      .from(userProfiles)
+      .where(eq(userProfiles.id, userProfileId))
+      .limit(1);
+
+    if (userExists.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Usuário não encontrado",
+      });
+    }
+
+    // Verifica se já favoritou
+    const alreadyFavorited = await db
+    .select()
+    .from(favoriteCars)
+    .where(
+      and(
+        eq(favoriteCars.carId, carId),
+        eq(favoriteCars.userProfileId, userProfileId)
+      )
+    )
+    .limit(1);
+
+    if (alreadyFavorited.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Este carro já está nos favoritos",
+      });
+    }
+
+    // Insere na tabela de favoritos
+    const result = await db
+      .insert(favoriteCars)
+      .values({
+        carId,
+        userProfileId,
+      })
+      .returning();
+
+    return res.status(201).json({
+      success: true,
+      message: "Carro favoritado com sucesso",
+      data: result[0],
+    });
+  } catch (error) {
+    logger.error("Erro ao favoritar carro:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Erro interno no servidor",
+    });
+  }
+};
+
+export const unfavoriteCar = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const userProfileId = Number(req.body.userProfileId);
+    const carId = Number(req.body.carId);
+
+    if (isNaN(userProfileId) || isNaN(carId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Parâmetros inválidos",
+      });
+    }
+
+    const result = await db
+      .delete(favoriteCars)
+      .where(
+        and(
+          eq(favoriteCars.userProfileId, userProfileId),
+          eq(favoriteCars.carId, carId)
+        )
+      )
+      .returning();
+
+    if (result.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Favorito não encontrado",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Carro removido dos favoritos com sucesso",
+    });
+  } catch (error) {
+    console.error("Erro ao remover favorito:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Erro interno no servidor",
+    });
+  }
+};

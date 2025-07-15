@@ -1,12 +1,13 @@
 import upload from '../middleware/uploadMiddleware';
 import { verifyToken } from '../middleware/authMiddleware';
-import { createCar, createCarReview, deleteCar, getAllCars, getCarById, updateCar } from '../controllers/car.controller';
+import { createCar, createCarReview, deleteCar, favoriteCar, getAllCars, getCarById, getFavoriteCarsByUser, unfavoriteCar, updateCar } from '../controllers/car.controller';
 import express from 'express';
 
 const router = express.Router();
 
 router.get("/getCars", getAllCars);
 router.get("/getCar/:id", getCarById);
+router.get("/favorites/:id", getFavoriteCarsByUser);
 router.post(
   "/createCar",
   verifyToken,
@@ -17,6 +18,7 @@ router.post(
   createCar
 );
 router.post("/createCarReview/:id", verifyToken, createCarReview);
+router.post("/favorite", verifyToken, favoriteCar);
 router.put(
   "/updateCar/:id",
   verifyToken,
@@ -27,5 +29,6 @@ router.put(
   updateCar
 );
 router.delete("/deleteCar/:id", verifyToken, deleteCar);
+router.delete("/deleteFavorite", verifyToken, unfavoriteCar);
 
 export default router;

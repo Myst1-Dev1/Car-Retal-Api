@@ -64,6 +64,20 @@ services:
     networks:
       - car-network
 
+  blog-service:
+    build:
+      context: ./blog-service
+    container_name: blog-service
+    ports:
+      - "4005:4005"
+    depends_on:
+      - car_db
+    environment:
+      - DATABASE_URL=postgres://myst1:coxinha123@car_db:5432/car_rental
+      - REDIS_URL=redis://redis_auth:6379
+    networks:
+      - car-network
+
   api-gateway:
     build:
       context: ./api-gateway

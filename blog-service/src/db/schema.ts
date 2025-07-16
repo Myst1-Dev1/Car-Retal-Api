@@ -76,3 +76,14 @@ export const favoriteCars = pgTable("favorite_cars", {
     .references(() => cars.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at").defaultNow(),
 });
+
+export const posts = pgTable("posts", {
+  id: serial("id").primaryKey(),
+  post_image_url: text("image_url"),
+  post_title: text("post_title").notNull(),
+  post_description: jsonb("post_description"),
+  post_comments: jsonb("post_comments"),
+  post_categories: jsonb("post_categories"),
+  related_posts: jsonb("relate_posts").default([]),
+  createdAt: timestamp("created_at").defaultNow(),
+});

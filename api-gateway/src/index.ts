@@ -78,6 +78,19 @@ app.use('/v1/car', proxy(process.env.CAR_SERVICE_URL!, {
   }
 }));
 
+// Rota do blog-service
+app.use('/v1/blog', proxy(process.env.BLOG_SERVICE_URL!, {
+  ...proxyOptions,
+  proxyReqOptDecorator: (proxyReqOpts: any, srcReq) => {
+    // proxyReqOpts.headers["Content-Type"] = "application/json";
+    return proxyReqOpts;
+  },
+  userResDecorator: (proxyRes, proxyResData, userReq, userRes) => {
+    logger.info(`Response from User Service: ${proxyRes.statusCode}`);
+    return proxyResData;
+  }
+}));
+
 app.get("/health", (_, res) => {
   res.json({ status: "API Gateway is healthy" });
 });

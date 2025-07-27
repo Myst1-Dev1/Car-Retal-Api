@@ -87,3 +87,16 @@ export const posts = pgTable("posts", {
   related_posts: jsonb("relate_posts").default([]),
   createdAt: timestamp("created_at").defaultNow(),
 });
+
+export const rentals = pgTable("rentals", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  carId: integer("car_id").notNull().references(() => cars.id),
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date").notNull(),
+  totalPrice: real("total_price"),
+  status: text("status").default("ativo"),
+  pickupLocation: text("pickup_location"),
+  dropoffLocation: text("dropoff_location"),
+  createdAt: timestamp("created_at").defaultNow()
+});

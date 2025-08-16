@@ -105,6 +105,65 @@ export const getFavoriteCarsByUser = async (req: Request, res: Response): Promis
   }
 };
 
+// export const createCar = async (req: Request, res: Response): Promise<any> => {
+//   logger.info("createCar endpoint hit...");
+  
+//   try {
+//     const { error, value } = createCarSchema.validate(req.body, {
+//       abortEarly: false,
+//       stripUnknown: true,
+//     });
+
+//     if (error) {
+//       logger.warn("Erro ao criar um carro", error);
+//       return res.status(400).json({
+//         success: false,
+//         message: "Erro de validação",
+//         errors: error.details.map((detail) => detail.message),
+//       });
+//     }
+
+//     let imageUrl: string | undefined;
+//     if ((req.files as any)?.image_url?.[0]) {
+//       const file = (req.files as any).image_url[0];
+//       const uploadResult = await uploadToCloudinary(file.path);
+//       imageUrl = uploadResult.url;
+//       await fs.unlink(file.path);
+//     }
+
+//     const thumbnails: string[] = [];
+//     if ((req.files as any)?.thumbnail_urls) {
+//       for (const file of (req.files as any).thumbnail_urls) {
+//         const uploadResult = await uploadToCloudinary(file.path);
+//         thumbnails.push(uploadResult.url);
+//         await fs.unlink(file.path);
+//       }
+//     }
+
+//     const result = await db
+//       .insert(cars)
+//       .values({
+//         ...value,
+//         image_url: imageUrl,
+//         thumbnail_urls: thumbnails,
+//         reviews: []
+//       })
+//       .returning();
+
+//     return res.status(201).json({
+//       success: true,
+//       message: "Carro criado com sucesso",
+//       data: result[0],
+//     });
+//   } catch (error) {
+//     logger.error("Erro ao criar carro:", error);
+//     res.status(500).json({
+//       success: false,
+//       message: "Erro interno no servidor",
+//     });
+//   }
+// };
+
 export const createCar = async (req: Request, res: Response): Promise<any> => {
   logger.info("createCar endpoint hit...");
   
@@ -124,7 +183,8 @@ export const createCar = async (req: Request, res: Response): Promise<any> => {
     }
 
     let imageUrl: string | undefined;
-    if ((req.files as any)?.image_url?.[0]) {
+    
+    if ((req.files as any)?.image_url && (req.files as any).image_url[0]) {
       const file = (req.files as any).image_url[0];
       const uploadResult = await uploadToCloudinary(file.path);
       imageUrl = uploadResult.url;
@@ -146,7 +206,7 @@ export const createCar = async (req: Request, res: Response): Promise<any> => {
         ...value,
         image_url: imageUrl,
         thumbnail_urls: thumbnails,
-        reviews: []
+        reviews: [],
       })
       .returning();
 
@@ -157,7 +217,7 @@ export const createCar = async (req: Request, res: Response): Promise<any> => {
     });
   } catch (error) {
     logger.error("Erro ao criar carro:", error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Erro interno no servidor",
     });

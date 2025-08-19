@@ -18,7 +18,7 @@ export const createCarSchema = Joi.object({
   price_per_day: Joi.number().required(),
   price_per_week: Joi.number().required(),
 
-  availability: Joi.boolean().default(true),
+  availability: Joi.boolean().default(false),
 
   reviews: Joi.array()
     .items(

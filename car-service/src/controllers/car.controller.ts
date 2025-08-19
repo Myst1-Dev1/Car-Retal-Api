@@ -166,7 +166,7 @@ export const getFavoriteCarsByUser = async (req: Request, res: Response): Promis
 
 export const createCar = async (req: Request, res: Response): Promise<any> => {
   logger.info("createCar endpoint hit...");
-  
+
   try {
     const { error, value } = createCarSchema.validate(req.body, {
       abortEarly: false,
@@ -182,22 +182,27 @@ export const createCar = async (req: Request, res: Response): Promise<any> => {
       });
     }
 
+    const files = req.files as {
+      image_url?: Express.Multer.File[];
+      thumbnail_urls?: Express.Multer.File[];
+    };
+
     let imageUrl: string | undefined;
-    
-    if ((req.files as any)?.image_url && (req.files as any).image_url[0]) {
-      const file = (req.files as any).image_url[0];
-      const uploadResult = await uploadToCloudinary(file.path);
+    if (files?.image_url?.[0]) {
+      const uploadResult = await uploadToCloudinary(files.image_url[0].path);
       imageUrl = uploadResult.url;
-      await fs.unlink(file.path);
+      await fs.unlink(files.image_url[0].path);
     }
 
-    const thumbnails: string[] = [];
-    if ((req.files as any)?.thumbnail_urls) {
-      for (const file of (req.files as any).thumbnail_urls) {
-        const uploadResult = await uploadToCloudinary(file.path);
-        thumbnails.push(uploadResult.url);
-        await fs.unlink(file.path);
-      }
+    let thumbnails: string[] = [];
+    if (files?.thumbnail_urls) {
+      thumbnails = await Promise.all(
+        files.thumbnail_urls.map(async (file) => {
+          const uploadResult = await uploadToCloudinary(file.path);
+          await fs.unlink(file.path);
+          return uploadResult.url;
+        })
+      );
     }
 
     const result = await db

@@ -2,7 +2,7 @@ import { Response, Request } from "express";
 import { logger } from "../utils/logger";
 import { db } from "../db/db";
 import { carReviews, cars, favoriteCars, userProfiles } from "../db/schema";
-import { createCarSchema } from "../utils/validation";
+import { createCarSchema, updateCarSchema } from "../utils/validation";
 import fs from "fs/promises";
 import uploadToCloudinary from "../helpers/cloudinary-helper";
 import { eq, and } from "drizzle-orm";
@@ -211,7 +211,6 @@ export const createCar = async (req: Request, res: Response): Promise<any> => {
         ...value,
         image_url: imageUrl,
         thumbnail_urls: thumbnails,
-        reviews: [],
       })
       .returning();
 
@@ -276,64 +275,103 @@ export const createCarReview = async (req: Request, res: Response): Promise<any>
   }
 };
 
+type FilesMap = {
+  image_url?: Express.Multer.File[];
+  thumbnail_urls?: Express.Multer.File[];
+};
+
+async function uploadAndUnlink(file: Express.Multer.File): Promise<string> {
+  try {
+    const up = await uploadToCloudinary(file.path);
+    return up.url;
+  } finally {
+    // garante remoção do tmp mesmo se o upload falhar
+    try { await fs.unlink(file.path); } catch {}
+  }
+}
+
 export const updateCar = async (req: Request, res: Response): Promise<any> => {
   logger.info("updateCar endpoint hit...");
-  
+
   try {
-    const { error, value } = createCarSchema.validate(req.body, {
+    // valida apenas campos textuais do body (multer já removeu os arquivos p/ req.files)
+    const { error, value } = updateCarSchema.validate(req.body, {
       abortEarly: false,
       stripUnknown: true,
     });
 
     if (error) {
-      logger.warn('Erro ao atualizar o carro', error);
+      logger.warn("Erro ao atualizar carro", error);
       return res.status(400).json({
         success: false,
         message: "Erro de validação",
-        errors: error.details.map((detail) => detail.message),
+        errors: error.details.map((d) => d.message),
       });
     }
 
-    const { id } = req.params;
+    const carId = Number(req.params.id);
+    if (Number.isNaN(carId)) {
+      return res.status(400).json({ success: false, message: "ID inválido" });
+    }
 
-     const carId = Number(id);
-
-    const existingCar:any = await db.select().from(cars).where(eq(cars.id, carId));
+    // (opcional) garanta que o carro existe
+    const [existingCar] = await db.select().from(cars).where(eq(cars.id, carId));
     if (!existingCar) {
-      return res.status(404).json({
+      return res.status(404).json({ success: false, message: "Carro não encontrado" });
+    }
+
+    const files = (req.files || {}) as FilesMap;
+
+    // uploads (Multer já ignorou partes “vazias”)
+    let newCoverUrl: string | undefined;
+    if (files.image_url?.[0]) {
+      newCoverUrl = await uploadAndUnlink(files.image_url[0]);
+    }
+
+    let newThumbs: string[] = [];
+    if (files.thumbnail_urls?.length) {
+      newThumbs = await Promise.all(files.thumbnail_urls.map(uploadAndUnlink));
+    }
+
+    // existentes (se enviados pelo form)
+    const existingImageUrl =
+      typeof req.body.existing_image_url === "string" && req.body.existing_image_url.length
+        ? req.body.existing_image_url
+        : undefined;
+
+    let existingThumbs: string[] | undefined;
+    if (typeof req.body.existing_thumbnail_urls === "string") {
+      try {
+        const parsed = JSON.parse(req.body.existing_thumbnail_urls);
+        if (Array.isArray(parsed)) existingThumbs = parsed.filter(Boolean);
+      } catch { /* noop */ }
+    }
+
+    // monta o SET dinamicamente
+    const updateData: Record<string, any> = { ...value };
+
+    // capa: se veio nova, usa; senão, se veio existing_ do form, usa; senão, não mexe
+    if (newCoverUrl) {
+      updateData.image_url = newCoverUrl;
+    } else if (existingImageUrl) {
+      updateData.image_url = existingImageUrl;
+    }
+    // thumbs: MESCLAR existentes + novas (ou troque para substituir)
+    if ((existingThumbs && existingThumbs.length) || newThumbs.length) {
+      updateData.thumbnail_urls = [...(existingThumbs ?? []), ...newThumbs];
+    }
+
+    // se nada mudou (só por segurança)
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({
         success: false,
-        message: "Carro não encontrado",
+        message: "Nenhum campo para atualizar",
       });
-    }
-
-    let imageUrl: string | undefined;
-    if ((req.files as any)?.image_url?.[0]) {
-      const file = (req.files as any).image_url[0];
-      const uploadResult = await uploadToCloudinary(file.path);
-      imageUrl = uploadResult.url;
-      await fs.unlink(file.path);
-    } else {
-      imageUrl = existingCar.image_url;
-    }
-
-    const thumbnails: string[] = [];
-    if ((req.files as any)?.thumbnail_urls) {
-      for (const file of (req.files as any).thumbnail_urls) {
-        const uploadResult = await uploadToCloudinary(file.path);
-        thumbnails.push(uploadResult.url);
-        await fs.unlink(file.path);
-      }
-    } else {
-      thumbnails.push(...existingCar.thumbnail_urls);
     }
 
     const result = await db
       .update(cars)
-      .set({
-        ...value,
-        image_url: imageUrl,
-        thumbnail_urls: thumbnails,
-      })
+      .set(updateData)
       .where(eq(cars.id, carId))
       .returning();
 
@@ -342,9 +380,9 @@ export const updateCar = async (req: Request, res: Response): Promise<any> => {
       message: "Carro atualizado com sucesso",
       data: result[0],
     });
-  } catch (error) {
-    logger.error("Erro ao atualizar carro:", error);
-    res.status(500).json({
+  } catch (err) {
+    logger.error("Erro ao atualizar carro:", err);
+    return res.status(500).json({
       success: false,
       message: "Erro interno no servidor",
     });

@@ -30,3 +30,10 @@ export const createCarSchema = Joi.object({
     )
     .default([]),
 });
+
+export const updateCarSchema = createCarSchema
+  .fork(Object.keys(createCarSchema.describe().keys), (s) => s.optional())
+  .keys({
+    availability: Joi.any().strip(), // mantém o valor do BD
+    reviews: Joi.any().strip(),      // NÃO permitir que venha no update
+});

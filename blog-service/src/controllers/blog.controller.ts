@@ -66,60 +66,64 @@ export const getPostById = async(req: Request, res: Response) => {
     }
 }
 
-export const createPost = async(req: Request, res: Response) => {
-    logger.info("createPost endpoint hit...");
-    
-    try {
+export const createPost = async (req: Request, res: Response) => {
+  logger.info("createPost endpoint hit...");
 
-        if (typeof req.body.post_categories === "string") {
-            req.body.post_categories = JSON.parse(req.body.post_categories);
-        }
-
-        if (typeof req.body.post_description === "string") {
-            req.body.post_description = JSON.parse(req.body.post_description);
-        }
-
-        const { error, value } = createPostSchema.validate(req.body, {
-            abortEarly: false,
-            stripUnknown: true,
-        });
-
-        const postImg = req.file;
-
-        if (error) {
-        logger.warn("Erro ao criar um artigo", error);
-        return res.status(400).json({
-            success: false,
-            message: "Erro de validação",
-            errors: error.details.map((detail) => detail.message),
-        });
-        }
-
-        let postUrl = null;
-            if (postImg) {
-                const uploadResult = await uploadToCloudinary(postImg.path);
-                postUrl = uploadResult.url;
-        }
-
-        const result:any = await db.insert(posts).values({
-            ...value,
-            post_image_url: postUrl
-        });
-
-        return res.status(201).json({
-        success: true,
-        message: "Artigo criado com sucesso",
-        data: result[0],
-        });
-
-    } catch (error) {
-        logger.error("Erro ao criar um artigo:", error);
-            res.status(500).json({
-            success: false,
-            message: "Erro interno no servidor",
-        });
+  try {
+    if (typeof req.body.post_categories === "string") {
+      try {
+        req.body.post_categories = JSON.parse(req.body.post_categories);
+      } catch {
+      }
     }
-}
+
+    const { error, value } = createPostSchema.validate(req.body, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
+
+    if (error) {
+      logger.warn("Erro ao criar um artigo", error);
+      return res.status(400).json({
+        success: false,
+        message: "Erro de validação",
+        errors: error.details.map((d) => d.message),
+      });
+    }
+
+    const postImg = req.file as Express.Multer.File | undefined;
+
+    let postUrl: string | null = null;
+    if (postImg) {
+      try {
+        const uploadResult = await uploadToCloudinary(postImg.path);
+        postUrl = uploadResult.url;
+      } finally {
+        try { await fs.unlink(postImg.path); } catch {}
+      }
+    }
+
+    const [inserted] = await db
+      .insert(posts)
+      .values({
+        ...value,
+        post_image_url: postUrl,
+      })
+      .returning();
+
+    return res.status(201).json({
+      success: true,
+      message: "Artigo criado com sucesso",
+      data: inserted,
+    });
+  } catch (error) {
+    logger.error("Erro ao criar um artigo:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Erro interno no servidor",
+    });
+  }
+};
 
 export const updatePost = async(req: Request, res: Response) => {
     logger.info("updatePost endpoint hit...");

@@ -19,7 +19,18 @@ export const createPostSchema = Joi.object({
 
   post_categories: Joi.array().items(Joi.string()).default([]),
 
-  related_posts: Joi.array().items(Joi.number().integer()).default([]),
+  related_posts: Joi.array().items(
+    Joi.object({
+      id: Joi.number().required(),
+      post_title: Joi.string().required(),
+      post_description: Joi.string().required(),
+      post_image_url: Joi.string().uri().optional(),
+      post_comments: Joi.array().default([]),
+      post_categories: Joi.array().items(Joi.string()).default([]),
+      createdAt: Joi.string().isoDate().required(),
+      related_posts: Joi.array().default([]),
+    })
+  ).default([]),
 
   createdAt: Joi.date().default(() => new Date()),
 });

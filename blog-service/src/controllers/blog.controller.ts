@@ -77,6 +77,14 @@ export const createPost = async (req: Request, res: Response) => {
       }
     }
 
+    if (typeof req.body.related_posts === "string") {
+      req.body.related_posts = JSON.parse(req.body.related_posts);
+    }
+
+    if (typeof req.body.related_posts === "string") {
+      try { req.body.related_posts = JSON.parse(req.body.related_posts); } catch {}
+    }
+
     const { error, value } = createPostSchema.validate(req.body, {
       abortEarly: false,
       stripUnknown: true,
@@ -125,73 +133,82 @@ export const createPost = async (req: Request, res: Response) => {
   }
 };
 
-export const updatePost = async(req: Request, res: Response) => {
-    logger.info("updatePost endpoint hit...");
-    
-    try {
+export const updatePost = async (req: Request, res: Response) => {
+  logger.info("updatePost endpoint hit...");
 
-        if (typeof req.body.post_categories === "string") {
-            req.body.post_categories = JSON.parse(req.body.post_categories);
-        }
+  try {
+    const { id } = req.params;
+    const postId = Number(id);
 
-        if (typeof req.body.post_description === "string") {
-            req.body.post_description = JSON.parse(req.body.post_description);
-        }
-
-        const { error, value } = createPostSchema.validate(req.body, {
-            abortEarly: false,
-            stripUnknown: true,
-        });
-
-        const { id } = req.params;
-        const postId = Number(id);
-
-        const postImg = req.file;
-
-        if (error) {
-            logger.warn("Erro ao criar um artigo", error);
-            return res.status(400).json({
-                success: false,
-                message: "Erro de validação",
-                errors: error.details.map((detail) => detail.message),
-        });
-        }
-
-        const existingPosts:any = await db.select().from(posts).where(eq(posts.id, postId));
-        if (!existingPosts) {
-        return res.status(404).json({
-            success: false,
-            message: "Artigo não encontrado não encontrado",
-        });
-        }
-
-        let postUrl = null;
-        if (postImg) {
-            const uploadResult = await uploadToCloudinary(postImg.path);
-            postUrl = uploadResult.url;
-        }
-
-        const result:any = await db.update(posts)
-        .set({
-            ...value,
-             post_image_url: postUrl
-        }).where(eq(posts.id, postId))
-        .returning();
-
-        return res.status(201).json({
-        success: true,
-        message: "Artigo atualizado com sucesso",
-        data: result[0],
-        });
-
-    } catch (error) {
-        logger.error("Erro ao atualizar um artigo:", error);
-            res.status(500).json({
-            success: false,
-            message: "Erro interno no servidor",
-        });
+    if (Number.isNaN(postId)) {
+      return res.status(400).json({ success: false, message: "ID do post inválido" });
     }
-}
+
+    if (typeof req.body.post_categories === "string") {
+      try { req.body.post_categories = JSON.parse(req.body.post_categories); } catch {}
+    }
+
+    if (typeof req.body.related_posts === "string") {
+      try { req.body.related_posts = JSON.parse(req.body.related_posts); } catch {}
+    }
+
+    const { error, value } = createPostSchema.validate(req.body, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
+
+    if (error) {
+      logger.warn("Erro ao atualizar um artigo", error);
+      return res.status(400).json({
+        success: false,
+        message: "Erro de validação",
+        errors: error.details.map((d) => d.message),
+      });
+    }
+
+    const existingPost = await db.select().from(posts).where(eq(posts.id, postId));
+    if (!existingPost || existingPost.length === 0) {
+      return res.status(404).json({ success: false, message: "Artigo não encontrado" });
+    }
+
+    const postImg = req.file as Express.Multer.File | undefined;
+    let postUrl = existingPost[0].post_image_url;
+
+    if (postImg) {
+      try {
+        const uploadResult = await uploadToCloudinary(postImg.path);
+        postUrl = uploadResult.url;
+      } finally {
+        try { await fs.unlink(postImg.path); } catch {}
+      }
+    }
+
+    const updateData: Record<string, any> = { ...value };
+
+    if (postUrl) updateData.post_image_url = postUrl;
+
+    if (!Array.isArray(updateData.post_categories)) updateData.post_categories = [];
+    if (!Array.isArray(updateData.related_posts)) updateData.related_posts = [];
+
+    const result = await db
+      .update(posts)
+      .set(updateData)
+      .where(eq(posts.id, postId))
+      .returning();
+
+    return res.status(200).json({
+      success: true,
+      message: "Artigo atualizado com sucesso",
+      data: result[0],
+    });
+  } catch (error) {
+    logger.error("Erro ao atualizar um artigo:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Erro interno no servidor",
+    });
+  }
+};
 
 export const deletePost = async(req: Request, res: Response) => {
     logger.info("deletePost endpoint hit...");

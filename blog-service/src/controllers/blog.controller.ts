@@ -230,4 +230,61 @@ export const deletePost = async(req: Request, res: Response) => {
             message: "Erro interno no servidor",
         });
     }
-}
+};
+
+export const addCommentToPost = async (req: Request, res: Response) => {
+  logger.info("addCommentToPost endpoint hit...");
+
+  try {
+    const { id } = req.params;
+    const postId = Number(id);
+
+    if (Number.isNaN(postId)) {
+      return res.status(400).json({ success: false, message: "ID do post inválido" });
+    }
+
+    const { name, avatarUrl, comment } = req.body;
+
+    if (!name || !comment) {
+      return res.status(400).json({ success: false, message: "Nome e comentário são obrigatórios" });
+    }
+
+    // Busca o post existente
+    const existingPosts = await db.select().from(posts).where(eq(posts.id, postId));
+    if (!existingPosts || existingPosts.length === 0) {
+      return res.status(404).json({ success: false, message: "Post não encontrado" });
+    }
+
+    const post = existingPosts[0];
+
+    const newComment = {
+      name,
+      avatarUrl: avatarUrl || null,
+      comment,
+      createdAt: new Date().toISOString(),
+    };
+
+    const existingComments = Array.isArray(post.post_comments) ? post.post_comments : [];
+
+    const updatedComments = [...existingComments, newComment];
+
+    const result = await db
+      .update(posts)
+      .set({ post_comments: updatedComments })
+      .where(eq(posts.id, postId))
+      .returning();
+
+    return res.status(200).json({
+      success: true,
+      message: "Comentário adicionado com sucesso",
+      data: result[0],
+    });
+
+  } catch (error) {
+    logger.error("Erro ao adicionar comentário:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Erro interno no servidor",
+    });
+  }
+};

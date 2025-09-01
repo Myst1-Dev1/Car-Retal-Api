@@ -13,6 +13,7 @@ export const createPostSchema = Joi.object({
         name: Joi.string().required(),
         avatarUrl: Joi.string().uri().optional(),
         comment: Joi.string().required(),
+        createdAt: Joi.string().isoDate().required()
       })
     )
     .default([]),

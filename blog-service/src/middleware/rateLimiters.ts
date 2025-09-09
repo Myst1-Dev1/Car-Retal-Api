@@ -11,7 +11,7 @@ const redisClient:any = new Redis(process.env.REDIS_URL!);
 const rateLimiter = new RateLimiterRedis({
   storeClient: redisClient,
   keyPrefix: "global_middleware",
-  points: 10,
+  points: 30,
   duration: 1,
 });
 

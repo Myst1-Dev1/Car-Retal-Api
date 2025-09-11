@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { logger } from "../utils/logger";
 import { db } from "../db/db";
-import { rentals, cars } from "../db/schema";
+import { rentals, cars, userProfiles } from "../db/schema";
 import { eq, and, or, between, lte, gte } from "drizzle-orm";
 import { createRentalSchema } from "../utils/validation";
 
@@ -61,11 +61,129 @@ export const getRentalById = async(req: Request, res: Response): Promise<any> =>
   }
 };
 
+// export const createRental = async (req: Request, res: Response): Promise<any> => {
+//   logger.info("createRental endpoint hit...");
+
+//   try {
+
+//     const { error, value } = createRentalSchema.validate(req.body, {
+//       abortEarly: false,
+//       stripUnknown: true,
+//     });
+
+//     if (error) {
+//       logger.warn("Erro de validação ao criar aluguel", error);
+//       return res.status(400).json({
+//         success: false,
+//         message: "Erro de validação",
+//         errors: error.details.map((detail) => detail.message),
+//       });
+//     }
+
+//     const {
+//       userId,
+//       carId,
+//       startDate,
+//       endDate,
+//       pickupLocation,
+//       dropoffLocation,
+//     } = value;
+
+//     if (!userId || !carId || !startDate || !endDate) {
+//       logger.warn("Campos obrigatórios ausentes");
+//       return res.status(400).json({
+//         success: false,
+//         message: "userId, carId, startDate e endDate são obrigatórios",
+//       });
+//     }
+
+//     const start:any = new Date(startDate);
+//     const end:any = new Date(endDate);
+//     // if (start >= end) {
+//     //   logger.warn("Datas inválidas");
+//     //   return res.status(400).json({
+//     //     success: false,
+//     //     message: "A data de término deve ser depois da data de início",
+//     //   });
+//     // }
+
+//     // 🔍 Verifica se o carro está alugado no período
+//     const conflictingRentals = await db
+//       .select()
+//       .from(rentals)
+//       .where(
+//         and(
+//           eq(rentals.carId, carId),
+//           eq(rentals.status, "ativo"),
+//           or(
+//             between(start, rentals.startDate, rentals.endDate),
+//             between(end, rentals.startDate, rentals.endDate),
+//             and(
+//                 lte(rentals.startDate, start),
+//                 gte(rentals.endDate, end)
+//             )
+//           )
+//         )
+//       );
+
+//     if (conflictingRentals.length > 0) {
+//       logger.warn("Carro já alugado no período solicitado");
+//       return res.status(400).json({
+//         success: false,
+//         message: "Este carro já está alugado nesse período",
+//       });
+//     }
+
+//     // 🔢 Busca o preço por dia
+//     const carData = await db.select().from(cars).where(eq(cars.id, carId));
+//     if (carData.length === 0) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "Carro não encontrado",
+//       });
+//     }
+
+//     const days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+//     const pricePerDay = carData[0].price_per_day ?? 0;
+//     const totalPrice = days * pricePerDay;
+
+//     // ✅ Insere aluguel
+//     const inserted = await db
+//       .insert(rentals)
+//       .values({
+//         userId,
+//         carId,
+//         startDate: start,
+//         endDate: end,
+//         pickupLocation,
+//         dropoffLocation,
+//         totalPrice,
+//         status: "ativo",
+//       })
+//       .returning();
+
+//     logger.info(`Aluguel criado para o carro ${carId} por ${days} dia(s)`);
+
+//     return res.status(201).json({
+//       success: true,
+//       message: "Aluguel criado com sucesso",
+//       data: inserted[0],
+//     });
+//   } catch (error) {
+//     logger.error("Erro ao criar aluguel:", error);
+//     return res.status(500).json({
+//       success: false,
+//       message: "Erro interno no servidor",
+//     });
+//   }
+// };
+
 export const createRental = async (req: Request, res: Response): Promise<any> => {
   logger.info("createRental endpoint hit...");
 
   try {
 
+    // Validação com Joi
     const { error, value } = createRentalSchema.validate(req.body, {
       abortEarly: false,
       stripUnknown: true,
@@ -89,6 +207,7 @@ export const createRental = async (req: Request, res: Response): Promise<any> =>
       dropoffLocation,
     } = value;
 
+    // Validação de campos obrigatórios
     if (!userId || !carId || !startDate || !endDate) {
       logger.warn("Campos obrigatórios ausentes");
       return res.status(400).json({
@@ -97,17 +216,10 @@ export const createRental = async (req: Request, res: Response): Promise<any> =>
       });
     }
 
-    const start:any = new Date(startDate);
-    const end:any = new Date(endDate);
-    // if (start >= end) {
-    //   logger.warn("Datas inválidas");
-    //   return res.status(400).json({
-    //     success: false,
-    //     message: "A data de término deve ser depois da data de início",
-    //   });
-    // }
+    const start: any = new Date(startDate);
+    const end: any = new Date(endDate);
 
-    // 🔍 Verifica se o carro está alugado no período
+    // Verifica se o carro está alugado no período
     const conflictingRentals = await db
       .select()
       .from(rentals)
@@ -119,8 +231,8 @@ export const createRental = async (req: Request, res: Response): Promise<any> =>
             between(start, rentals.startDate, rentals.endDate),
             between(end, rentals.startDate, rentals.endDate),
             and(
-                lte(rentals.startDate, start),
-                gte(rentals.endDate, end)
+              lte(rentals.startDate, start),
+              gte(rentals.endDate, end)
             )
           )
         )
@@ -134,7 +246,7 @@ export const createRental = async (req: Request, res: Response): Promise<any> =>
       });
     }
 
-    // 🔢 Busca o preço por dia
+    // Busca o preço por dia
     const carData = await db.select().from(cars).where(eq(cars.id, carId));
     if (carData.length === 0) {
       return res.status(404).json({
@@ -163,6 +275,21 @@ export const createRental = async (req: Request, res: Response): Promise<any> =>
       .returning();
 
     logger.info(`Aluguel criado para o carro ${carId} por ${days} dia(s)`);
+
+    // 1️⃣ Atualiza o rentalHistory do usuário
+    const user:any = await db.select().from(userProfiles).where(eq(userProfiles.userId, userId));
+    const newRentalHistory = user[0].rentalHistory ? [...user[0].rentalHistory, inserted[0]] : [inserted[0]];
+
+    await db
+      .update(userProfiles)
+      .set({ rentalHistory: newRentalHistory })
+      .where(eq(userProfiles.userId, userId));
+
+    // 2️⃣ Atualiza a disponibilidade do carro
+    await db
+      .update(cars)
+      .set({ availability: true })
+      .where(eq(cars.id, carId));
 
     return res.status(201).json({
       success: true,

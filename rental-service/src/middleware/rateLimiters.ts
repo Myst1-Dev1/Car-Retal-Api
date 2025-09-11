@@ -6,6 +6,7 @@ import { RedisStore } from "rate-limit-redis";
 import { logger } from "../utils/logger";
 
 const redisClient:any = new Redis(process.env.REDIS_URL!);
+const WHITELIST = ["192.168.0.186", "127.0.0.1", "172.18.0.9"];
 
 // DDoS protection
 const rateLimiter = new RateLimiterRedis({
@@ -16,6 +17,12 @@ const rateLimiter = new RateLimiterRedis({
 });
 
 export const rateLimiterMiddleware = (req: Request, res: Response, next: NextFunction) => {
+  const clientIp = req.ip!.replace("::ffff:", "");
+
+  if (WHITELIST.includes(clientIp)) {
+    return next(); // pula o rate limiter
+  }
+  
   rateLimiter.consume(req.ip!)
     .then(() => next())
     .catch(() => {

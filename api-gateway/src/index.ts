@@ -18,7 +18,7 @@ app.use(express.json());
 app.use(cors());
 app.use(morgan("dev"));
 app.use(errorHandler);
-app.use(rateLimiter);
+// app.use(rateLimiter);
 
 app.use((req, res, next) => {
     logger.info(`Received ${req.method} request to ${req.url}`);

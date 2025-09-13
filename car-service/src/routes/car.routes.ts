@@ -1,5 +1,5 @@
 import upload from '../middleware/uploadMiddleware';
-import { verifyToken } from '../middleware/authMiddleware';
+import { verifyToken, verifyAdmin } from '../middleware/authMiddleware';
 import { createCar, createCarReview, deleteCar, favoriteCar, getAllCars, getCarById, getFavoriteCarsByUser, unfavoriteCar, updateCar } from '../controllers/car.controller';
 import express from 'express';
 
@@ -11,6 +11,7 @@ router.get("/favorites/:id", getFavoriteCarsByUser);
 router.post(
   "/createCar",
   verifyToken,
+  verifyAdmin,
   upload.fields([
     { name: "image_url", maxCount: 1 },
     { name: "thumbnail_urls", maxCount: 5 },
@@ -22,13 +23,14 @@ router.post("/favorite", verifyToken, favoriteCar);
 router.put(
   "/updateCar/:id",
   verifyToken,
+  verifyAdmin,
   upload.fields([
     { name: "image_url", maxCount: 1 },
     { name: "thumbnail_urls", maxCount: 5 },
   ]),
   updateCar
 );
-router.delete("/deleteCar/:id", verifyToken, deleteCar);
+router.delete("/deleteCar/:id", verifyToken, verifyAdmin, deleteCar);
 router.delete("/deleteFavorite", verifyToken, unfavoriteCar);
 
 export default router;

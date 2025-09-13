@@ -14,8 +14,8 @@ app.use(helmet());
 app.use(cors());
 app.use(express.json());
 
-app.use(rateLimiterMiddleware);
-app.use("/api/rental", sensitiveLimiter);
+// app.use(rateLimiterMiddleware);
+// app.use("/api/rental", sensitiveLimiter);
 app.use("/api/rental", rentalRoutes);
 
 app.use(errorHandler);

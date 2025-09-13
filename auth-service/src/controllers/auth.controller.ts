@@ -72,7 +72,7 @@ export const register = async (req: Request, res: Response): Promise<any> => {
   }
 };
 
-export const login = async (req: Request, res: Response) : Promise<any> => {
+export const login = async (req: Request, res: Response): Promise<any> => {
   logger.info("Login endpoint hit...");
 
   try {
@@ -89,20 +89,31 @@ export const login = async (req: Request, res: Response) : Promise<any> => {
 
     logger.info("Attempting login for:", email);
 
+    let isAdmin = false;
+    if (email === process.env.ADMIN_EMAIL) {
+      if (password === process.env.ADMIN_PASSWORD) {
+        isAdmin = true;
+      } else {
+        return res.status(401).json({ success: false, message: "Senha de admin incorreta" });
+      }
+    }
+
     const user = await db.select().from(users).where(eq(users.email, email)).limit(1);
     if (user.length === 0) {
       logger.warn("User not found:", email);
       return res.status(404).json({ success: false, message: "Usuário não encontrado" });
     }
 
-    const isPasswordValid = await bcrypt.compare(password, user[0].passwordHash);
-    if (!isPasswordValid) {
-      logger.warn("Invalid password attempt for:", email);
-      return res.status(401).json({ success: false, message: "Senha incorreta" });
+    if (!isAdmin) {
+      const isPasswordValid = await bcrypt.compare(password, user[0].passwordHash);
+      if (!isPasswordValid) {
+        logger.warn("Invalid password attempt for:", email);
+        return res.status(401).json({ success: false, message: "Senha incorreta" });
+      }
     }
-    
+
     const token = jwt.sign(
-      { id: user[0].id, email: user[0].email },
+      { id: user[0].id, email: user[0].email, isAdmin },
       process.env.JWT_SECRET!,
       { expiresIn: "1d" }
     );

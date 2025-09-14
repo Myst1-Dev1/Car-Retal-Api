@@ -14,8 +14,8 @@ app.use(helmet());
 app.use(cors());
 app.use(express.json());
 
-// app.use(rateLimiterMiddleware);
-// app.use("/api/car", sensitiveLimiter);
+app.use(rateLimiterMiddleware);
+app.use("/api/car", sensitiveLimiter);
 
 app.use("/api/car", carRoutes);
 
